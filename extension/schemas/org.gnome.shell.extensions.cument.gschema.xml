@@ -1,0 +1,10 @@
+<schemalist>
+  <schema id="org.gnome.shell.extensions.cument" path="/org/gnome/shell/extensions/cument/">
+    <key name="toggle-shortcut" type="as">
+      <default>['&lt;Alt&gt;bar', '&lt;Alt&gt;&lt;Shift&gt;backslash']</default>
+      <summary>Open or close the Markdown drawer</summary>
+    </key>
+    <key name="drawer-width" type="i"><default>580</default><range min="380" max="1100"/><summary>Drawer width in logical pixels</summary></key>
+    <key name="project" type="s"><default>''</default><summary>Last active project directory</summary></key>
+  </schema>
+</schemalist>

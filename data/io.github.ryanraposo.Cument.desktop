@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=cument
+Comment=Your project's margin
+Exec=cument open
+Icon=io.github.ryanraposo.Cument
+Terminal=false
+Categories=GNOME;GTK;Utility;TextEditor;Development;
+Keywords=Markdown;Notes;Terminal;Drawer;
+StartupWMClass=io.github.ryanraposo.Cument

@@ -1,0 +1,16 @@
+name: Check and package
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    container: ubuntu:26.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: apt-get update && apt-get install -y make python3 git libglib2.0-bin dpkg-dev
+      - run: make test deb source
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cument-packages
+          path: dist/*

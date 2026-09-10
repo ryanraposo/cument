@@ -1,0 +1,7 @@
+.cument-earmark {
+    border-radius: 12px 0 0 12px;
+    border: 1px solid rgba(127,127,127,.28);
+    padding: 0;
+    box-shadow: 0 4px 18px rgba(0,0,0,.18);
+}
+.cument-earmark:hover { box-shadow: 0 5px 22px rgba(0,0,0,.28); }

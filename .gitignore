@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+build/
+dist/
+extension/schemas/gschemas.compiled
+debian/cument/
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/files
+debian/*.substvars
+debian/*.debhelper

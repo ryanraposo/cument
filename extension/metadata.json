@@ -1,0 +1,9 @@
+{
+  "uuid": "cument@ryanraposo.github.io",
+  "name": "cument",
+  "description": "Your project's margin. A context-aware Markdown drawer for the terminal.",
+  "shell-version": ["50"],
+  "settings-schema": "org.gnome.shell.extensions.cument",
+  "url": "https://github.com/ryanraposo/cument",
+  "version": 1
+}

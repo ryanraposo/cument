@@ -1,0 +1,36 @@
+.TH CUMENT 1 "September 2026" "cument 0.1.0"
+.SH NAME
+cument \- your project's Markdown margin
+.SH SYNOPSIS
+.B cument
+[open|toggle|close|context|list|shell-init|doctor]
+.SH DESCRIPTION
+A native Markdown drawer for GNOME 50 on Wayland. Alt+bar toggles the drawer.
+Enable cument@ryanraposo.github.io using gnome-extensions after installation.
+.SH COMMANDS
+.TP
+.B open [DIRECTORY]
+Open the drawer in the given project (default: working directory).
+.TP
+.B toggle [DIRECTORY]
+Toggle the drawer. With no command, cument toggles the working project.
+.TP
+.B close
+Close the drawer and return focus to the previous application.
+.TP
+.B list [DIRECTORY] [--json]
+List Markdown files, respecting Git ignore rules.
+.TP
+.B shell-init bash|zsh|fish
+Print the shell hook. Evaluate it in the interactive shell configuration.
+.TP
+.B context [DIRECTORY] [--pid PID]
+Publish shell context. Used by shell hooks.
+.TP
+.B doctor
+Report the session, dependency and extension state.
+.SH FILES
+.I ~/.local/state/cument/recovery/
+Recovery copies of documents whose save failed.
+.SH AUTHOR
+Ryan Raposo <raposo.ryan@gmail.com>
