@@ -8,11 +8,14 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 const APP_ID = 'io.github.ryanraposo.Cument';
+const ANIMATION_DURATION = 280;
+const EARMARK_THICKNESS = 36;
 const XML = `<node><interface name="org.gnome.Shell.Extensions.Cument">
  <method name="Toggle"><arg type="s" direction="in" name="directory"/></method>
  <method name="Open"><arg type="s" direction="in" name="directory"/></method>
  <method name="Close"/>
  <method name="Context"><arg type="s" direction="in" name="directory"/><arg type="i" direction="in" name="pid"/></method>
+ <method name="Location"><arg type="s" direction="in" name="directory"/></method>
  <method name="Status"><arg type="s" direction="out" name="status"/></method>
 </interface></node>`;
 
@@ -25,9 +28,11 @@ export default class Cument extends Extension {
         this._signals = [];
         this._open = false;
         this._project = this._settings.get_string('project') || GLib.get_home_dir();
+        this._contextSource = 'saved';
+        this._nautilusProject = null;
         this._earmark = new St.Button({style_class: 'cument-earmark', reactive: true,
             can_focus: true, track_hover: true, accessible_name: 'Toggle cument drawer'});
-        this._label = new St.Label({text: 'cument'});
+        this._label = new St.Label({text: 'cument', y_align: Clutter.ActorAlign.CENTER});
         this._earmark.set_child(this._label);
         this._earmark.connect('clicked', () => this.Toggle(''));
         Main.layoutManager.addChrome(this._earmark, {affectsStruts: false, trackFullscreen: true});
@@ -97,14 +102,18 @@ export default class Cument extends Extension {
         this._label.set_text(name.length > 24 ? `${name.slice(0, 23)}…` : name);
         // Rotate the entire hit target: its text reads bottom to top.
         const length = Math.max(110, Math.min(220, name.length * 8 + 38));
-        this._earmark.set_size(length, 32);
+        this._earmark.set_size(length, EARMARK_THICKNESS);
         this._earmark.set_pivot_point(.5, .5);
         this._earmark.rotation_angle_z = -90;
         const edge = area.x + area.width - (this._open ? width : 0);
-        const x = edge - 16 - length / 2;
-        const y = area.y + Math.round(area.height / 3) + length / 2 - 16;
-        if (this._positioned && this._interface.get_boolean('enable-animations'))
-            this._earmark.ease({x, y, duration: 280, mode: Clutter.AnimationMode.EASE_OUT_CUBIC});
+        const halfThickness = EARMARK_THICKNESS / 2;
+        const x = edge - halfThickness - length / 2;
+        const y = area.y + Math.round(area.height / 3) + length / 2 - halfThickness;
+        if (this._positioned && this._interface.get_boolean('enable-animations')) {
+            const mode = this._open ? Clutter.AnimationMode.EASE_OUT_CUBIC
+                : Clutter.AnimationMode.EASE_IN_CUBIC;
+            this._earmark.ease({x, y, duration: ANIMATION_DURATION, mode});
+        }
         else this._earmark.set_position(x, y);
         this._positioned = true;
         if (this._window && this._window.get_compositor_private()) {
@@ -123,22 +132,34 @@ export default class Cument extends Extension {
         this._titleSignal = 0;
         if (!this._watched || this._watched.get_gtk_application_id() === APP_ID) return;
         this._lastWindow = this._watched;
+        if (this._isNautilus(this._watched) && this._nautilusProject) {
+            this._setProject(this._nautilusProject, 'nautilus');
+            return;
+        }
         this._titleSignal = this._watched.connect('notify::title', () => this._followTitle());
         this._followTitle();
+    }
+
+    _isNautilus(window) {
+        if (!window) return false;
+        if (window.get_gtk_application_id() === 'org.gnome.Nautilus') return true;
+        return Shell.WindowTracker.get_default().get_window_app(window)?.get_id() ===
+            'org.gnome.Nautilus.desktop';
     }
 
     _followTitle() {
         const title = this._watched?.get_title() ?? '';
         const match = title.match(/cument:(\d+)/);
         if (match && this._contexts.has(Number(match[1]))) {
-            this._setProject(this._contexts.get(Number(match[1])));
+            this._setProject(this._contexts.get(Number(match[1])), 'terminal');
         }
     }
 
-    _setProject(directory) {
+    _setProject(directory, source = null) {
         if (!directory || !GLib.file_test(directory, GLib.FileTest.IS_DIR)) return;
         const changed = directory !== this._project;
         this._project = directory;
+        if (source) this._contextSource = source;
         this._settings.set_string('project', directory);
         this._layout();
         if (changed && this._open) this._launch(false, true);
@@ -149,9 +170,13 @@ export default class Cument extends Extension {
         this._contexts.delete(pid);
         this._contexts.set(pid, directory);
         if (this._contexts.size > 128) this._contexts.delete(this._contexts.keys().next().value);
-        const title = global.display.focus_window?.get_title() ?? '';
-        if (title.match(/cument:(\d+)/)?.[1] === String(pid) || this._contexts.size === 1)
-            this._setProject(directory);
+        this._setProject(directory, 'terminal');
+    }
+
+    Location(directory) {
+        if (!directory || !GLib.file_test(directory, GLib.FileTest.IS_DIR)) return;
+        this._nautilusProject = directory;
+        this._setProject(directory, 'nautilus');
     }
 
     _launch(hide = false, background = false) {
@@ -178,7 +203,7 @@ export default class Cument extends Extension {
 
     Open(directory) {
         this._monitor = this._lastWindow?.get_monitor() ?? Main.layoutManager.primaryIndex;
-        this._setProject(directory);
+        this._setProject(directory, directory ? 'explicit' : null);
         this._open = true;
         this._launch();
         this._layout();
@@ -189,7 +214,7 @@ export default class Cument extends Extension {
         const actor = this._window?.get_compositor_private();
         if (!actor) return;
         actor.remove_all_transitions();
-        const duration = this._interface.get_boolean('enable-animations') ? 280 : 0;
+        const duration = this._interface.get_boolean('enable-animations') ? ANIMATION_DURATION : 0;
         if (open) {
             actor.translation_x = this._width;
             actor.opacity = 0;
@@ -216,7 +241,8 @@ export default class Cument extends Extension {
     }
 
     Status() {
-        return JSON.stringify({open: this._open, project: this._project, contexts: this._contexts.size});
+        return JSON.stringify({open: this._open, project: this._project,
+            source: this._contextSource, contexts: this._contexts.size});
     }
 
     disable() {
