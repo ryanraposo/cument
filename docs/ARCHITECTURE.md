@@ -1,6 +1,6 @@
 # Architecture
 
-The CLI discovers project roots and publishes context over the current user's session bus. Shell hooks send a project path and shell PID at each prompt; terminal titles carry the PID so the extension can match the focused window or tab. No environment variables, command history, document content or credentials are transmitted.
+The CLI discovers project roots and publishes context over the current user's session bus. Shell hooks send a project path and shell PID at each prompt. A tiny Nautilus-Python provider publishes each local folder visit through the same path, and the newest terminal or Files event becomes the active project. Terminal titles carry the PID so focusing a known terminal can reassert that terminal's current project. No environment variables, command history, document content or credentials are transmitted.
 
 The GNOME Shell extension owns a small chrome actor at one-third of the right edge, the Alt+bar binding and a D-Bus interface at `/org/gnome/Shell/Extensions/Cument`. It positions only the matching `io.github.ryanraposo.Cument` application window, applies compositor translations, and returns focus after closing. It does not reserve desktop space. GNOME controls session locking and extension lifetime.
 
