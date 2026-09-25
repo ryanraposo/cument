@@ -56,7 +56,7 @@ def main(argv=None):
     if args.command == 'doctor':
         import subprocess
         checks = {}
-        for namespace, version in [('Gtk', '4.0'), ('Adw', '1'), ('GtkSource', '5')]:
+        for namespace, version in [('Gtk', '4.0'), ('Adw', '1'), ('GtkSource', '5'), ('Nautilus', '4.1')]:
             try:
                 import gi
                 gi.require_version(namespace, version)
