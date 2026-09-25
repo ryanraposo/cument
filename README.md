@@ -33,7 +33,9 @@ cument shell-init fish | source
 
 Open a new terminal. The hook publishes the project at each prompt and sets a title such as `cument — cument:12345`. The Shell extension uses that shell ID to distinguish terminal windows and tabs. Terminal title overrides, terminal multiplexers and remote SSH sessions may prevent automatic matching; `cument open /path/to/project` always selects explicitly. Set `CUMENT_TITLE=0` before the hook to keep your existing title and use explicit selection.
 
-The project is the Git worktree root, the nearest directory containing a project marker, or the current directory. Git-ignored files, dependency directories, symlinks and files over 4 MiB are excluded. The map displays up to 500 files and is refreshed with its refresh button.
+Cument also follows **GNOME Files (Nautilus)**. The package installs a Nautilus-Python provider that publishes each local folder you visit. Terminal prompts and Files folder visits share one recency stream: whichever location was used most recently becomes Cument's context. Focusing a known terminal reasserts that terminal's current project. After first installing or upgrading the provider, restart Files once so Nautilus loads it.
+
+The project is the Git worktree root, the nearest directory containing a project marker, or the current directory. Non-local Files locations are ignored. Git-ignored files, dependency directories, symlinks and files over 4 MiB are excluded. The map displays up to 500 files and is refreshed with its refresh button.
 
 ## Use
 

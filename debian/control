@@ -11,11 +11,11 @@ Vcs-Browser: https://github.com/ryanraposo/cument
 
 Package: cument
 Architecture: all
-Depends: ${misc:Depends}, python3 (>= 3.12), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, gir1.2-gtksource-5, gnome-shell (>= 50), gnome-shell (<< 51), libglib2.0-bin
+Depends: ${misc:Depends}, python3 (>= 3.12), python3-gi, python3-nautilus, gir1.2-gtk-4.0, gir1.2-adw-1, gir1.2-gtksource-5, gnome-shell (>= 50), gnome-shell (<< 51), libglib2.0-bin
 Recommends: git, gnome-shell-extension-prefs
 Description: context-aware Markdown editor in a GNOME Wayland side drawer
  cument places a native Markdown editor at the right edge of your desktop.
  A global shortcut and a vertical project tab reveal a directory-clustered
- map of notes. Bash, Zsh and Fish integration follows your terminal context.
+ map of notes. Bash, Zsh, Fish and GNOME Files integration follow your working context.
  Includes autosave, conflict detection, Markdown highlighting and GNOME
  appearance integration. Enable the included Shell extension after install.
