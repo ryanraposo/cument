@@ -28,9 +28,10 @@ def main(argv=None):
         p = sub.add_parser(name)
         p.add_argument('directory', nargs='?', default=os.getcwd())
     sub.add_parser('close')
-    p = sub.add_parser('context', help='Publish shell context (used by shell integration)')
+    p = sub.add_parser('context', help='Publish the current working location')
     p.add_argument('directory', nargs='?', default=os.getcwd())
     p.add_argument('--pid', type=int, default=os.getppid())
+    p.add_argument('--source', choices=('terminal', 'nautilus'), default='terminal')
     p = sub.add_parser('list', help='List project Markdown files without opening a window')
     p.add_argument('directory', nargs='?', default=os.getcwd())
     p.add_argument('--json', action='store_true')
@@ -79,7 +80,11 @@ def main(argv=None):
         if args.command == 'close':
             call('Close')
         elif args.command == 'context':
-            call('Context', '(si)', (str(project_root(args.directory)), args.pid))
+            directory = str(project_root(args.directory))
+            if args.source == 'nautilus':
+                call('Location', '(s)', (directory,))
+            else:
+                call('Context', '(si)', (directory, args.pid))
         else:
             directory = str(project_root(getattr(args, 'directory', os.getcwd())))
             call('Open' if args.command == 'open' else 'Toggle', '(s)', (directory,))
