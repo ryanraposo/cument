@@ -10,13 +10,25 @@ Built for **Ubuntu 26.04 / GNOME 50**. Python, GTK 4, libadwaita and GtkSourceVi
 
 ## Install locally
 
+Prerequisites (Ubuntu 26.04 / GNOME 50):
+
 ```sh
-make deb
+sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-gtksource-5 libglib2.0-bin
+```
+
+Build and install:
+
+```sh
+make test && make deb
 sudo apt install ./dist/cument_0.1.0-1ppa1_all.deb
 gnome-extensions enable cument@ryanraposo.github.io
 ```
 
-On the first installation GNOME may need a logout/login to discover the extension. Then enable it and run `cument doctor`. This does not restart or replace your desktop automatically.
+On the first installation GNOME may need a logout/login to discover the extension. This does not restart or replace your desktop automatically. To reinstall after an update, rebuild the `.deb` and run `sudo apt install` again, then restart GNOME Shell's extension handling with `gnome-extensions disable cument@ryanraposo.github.io && gnome-extensions enable cument@ryanraposo.github.io` (or logout/login).
+
+Verify with `cument doctor`: dependencies should read `available` and `drawer` should show the extension status. If `drawer` reads `unavailable`, the extension is not enabled yet.
+
+Guake users: keep Guake's "Use VTE titles" enabled so per-tab titles reach the window title; the drawer follows tab switches and show/hide via the focused window title plus a process-tree fallback, so custom tab names still resolve when possible. Nautilus follow is a best-effort heuristic (folder basename matched against known projects); ambiguous names keep the current project and `cument open /path` always selects explicitly.
 
 ## Follow your terminal
 

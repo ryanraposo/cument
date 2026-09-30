@@ -26,6 +26,7 @@ export default class Cument extends Extension {
         this._contexts = new Map();
         this._sources = new Set();
         this._signals = [];
+        this._followTimer = 0;
         this._open = false;
         this._project = this._settings.get_string('project') || GLib.get_home_dir();
         this._contextSource = 'saved';
@@ -41,6 +42,7 @@ export default class Cument extends Extension {
         this._signals.push([Main.layoutManager, Main.layoutManager.connect('monitors-changed', () => this._layout())]);
         this._signals.push([global.display, global.display.connect('workareas-changed', () => this._layout())]);
         this._signals.push([global.display, global.display.connect('notify::focus-window', () => this._focus())]);
+        this._signals.push([global.workspace_manager, global.workspace_manager.connect('active-workspace-changed', () => this._scheduleFollow(150))]);
         this._signals.push([global.display, global.display.connect('window-created', (_display, window) => {
             if (this._isEditor(window)) {
                 const actor = window.get_compositor_private();
@@ -51,11 +53,16 @@ export default class Cument extends Extension {
             }
         })]);
         this._signals.push([global.window_manager, global.window_manager.connect('map', (_wm, actor) => {
-            if (this._isEditor(actor.meta_window)) {
-                this._window = actor.meta_window;
+            const win = actor.meta_window;
+            if (this._isEditor(win)) {
+                this._window = win;
                 this._layout();
                 if (this._open) this._animate(true);
                 else this._launch(true);
+            } else if (win === global.display.focus_window || this._isGuake(win)) {
+                // Dropdown terminals (Guake) toggle via map/unmap without a
+                // focus-window change; re-resolve on show.
+                this._scheduleFollow(150);
             }
         })]);
         this._signals.push([Main.overview, Main.overview.connect('showing', () => this._earmark.hide())]);
@@ -73,6 +80,108 @@ export default class Cument extends Extension {
     _isEditor(window) {
         return window && window.get_window_type() === Meta.WindowType.NORMAL &&
             (window.get_gtk_application_id() === APP_ID || window.get_wm_class() === APP_ID);
+    }
+
+    _isGuake(window) {
+        if (!window) return false;
+        const appId = (window.get_gtk_application_id() ?? '').toLowerCase();
+        const wmClass = (window.get_wm_class() ?? '').toLowerCase();
+        return appId.includes('guake') || wmClass.includes('guake');
+    }
+
+    _isNautilus(window) {
+        if (!window) return false;
+        if (window.get_gtk_application_id() === 'org.gnome.Nautilus') return true;
+        if ((window.get_wm_class() ?? '').toLowerCase() === 'nautilus') return true;
+        try {
+            return Shell.WindowTracker.get_default().get_window_app(window)?.get_id() ===
+                'org.gnome.Nautilus.desktop';
+        } catch (_) { return false; }
+    }
+
+    _scheduleFollow(delay = 200) {
+        if (this._followTimer) return;
+        this._followTimer = this._later(delay, () => {
+            this._followTimer = 0;
+            this._resolve();
+        });
+    }
+
+    _isDescendant(pid, ancestor) {
+        // Walk /proc parent chain: shell pid -> ... -> terminal emulator pid.
+        let current = pid;
+        for (let depth = 0; depth < 32 && current > 1 && current !== ancestor; depth++) {
+            try {
+                const [, contents] = GLib.file_get_contents(`/proc/${current}/stat`);
+                const stat = new TextDecoder().decode(contents);
+                const match = stat.match(/\)\s+\S+\s+(\d+)/);
+                if (!match) return false;
+                current = Number(match[1]);
+            } catch (_) {
+                return false;
+            }
+        }
+        return current === ancestor;
+    }
+
+    _bestDescendantContext(windowPid) {
+        let best = null;
+        for (const [pid, entry] of this._contexts) {
+            if (pid === windowPid || this._isDescendant(pid, windowPid)) {
+                if (!best || (entry.seen ?? 0) > (best.entry.seen ?? 0))
+                    best = {pid, entry};
+            }
+        }
+        return best?.entry?.dir ?? null;
+    }
+
+    _followNautilus(window) {
+        // Extension-only heuristic: Nautilus title is the folder basename
+        // (it also fires notify::title on in-window navigation).
+        const raw = (window.get_title() ?? '').split(' — ')[0].trim();
+        if (!raw) return false;
+        const candidates = new Map();
+        for (const entry of this._contexts.values())
+            candidates.set(entry.dir, entry.dir);
+        if (this._project) candidates.set(this._project, this._project);
+        const matches = [...candidates.values()].filter(dir => GLib.path_get_basename(dir) === raw);
+        if (matches.length === 1) {
+            this._setProject(matches[0], 'nautilus');
+            return true;
+        }
+        return false;
+    }
+
+    _resolve() {
+        const window = global.display.focus_window ?? this._lastWindow;
+        if (!window || this._isEditor(window)) return false;
+        const title = window.get_title() ?? '';
+        const match = title.match(/cument:(\d+)/);
+        if (match) {
+            const entry = this._contexts.get(Number(match[1]));
+            if (entry) {
+                this._setProject(entry.dir ?? entry, 'terminal');
+                return true;
+            }
+        }
+        if (this._isNautilus(window)) {
+            if (this._nautilusProject) {
+                this._setProject(this._nautilusProject, 'nautilus');
+                return true;
+            }
+            if (this._followNautilus(window)) return true;
+        }
+        try {
+            const windowPid = window.get_pid();
+            if (windowPid > 0) {
+                const dir = this._bestDescendantContext(windowPid);
+                if (dir) {
+                    this._setProject(dir, 'terminal');
+                    return true;
+                }
+            }
+        } catch (_) { /* get_pid unavailable; title already tried */ }
+        return false;
     }
 
     _later(delay, callback) {
@@ -136,23 +245,12 @@ export default class Cument extends Extension {
             this._setProject(this._nautilusProject, 'nautilus');
             return;
         }
-        this._titleSignal = this._watched.connect('notify::title', () => this._followTitle());
-        this._followTitle();
-    }
-
-    _isNautilus(window) {
-        if (!window) return false;
-        if (window.get_gtk_application_id() === 'org.gnome.Nautilus') return true;
-        return Shell.WindowTracker.get_default().get_window_app(window)?.get_id() ===
-            'org.gnome.Nautilus.desktop';
+        this._titleSignal = this._watched.connect('notify::title', () => this._scheduleFollow(120));
+        this._resolve();
     }
 
     _followTitle() {
-        const title = this._watched?.get_title() ?? '';
-        const match = title.match(/cument:(\d+)/);
-        if (match && this._contexts.has(Number(match[1]))) {
-            this._setProject(this._contexts.get(Number(match[1])), 'terminal');
-        }
+        this._resolve();
     }
 
     _setProject(directory, source = null) {
@@ -167,8 +265,9 @@ export default class Cument extends Extension {
 
     Context(directory, pid) {
         if (!GLib.file_test(directory, GLib.FileTest.IS_DIR) || pid <= 0) return;
+        const seen = Date.now();
         this._contexts.delete(pid);
-        this._contexts.set(pid, directory);
+        this._contexts.set(pid, {dir: directory, seen});
         if (this._contexts.size > 128) this._contexts.delete(this._contexts.keys().next().value);
         this._setProject(directory, 'terminal');
     }
@@ -256,6 +355,7 @@ export default class Cument extends Extension {
             try { object.disconnect(id); } catch (_) { /* window already gone */ }
         }
         for (const id of this._sources ?? []) GLib.source_remove(id);
+        this._followTimer = 0;
         const actor = this._window?.get_compositor_private();
         if (actor) {
             actor.remove_all_transitions();

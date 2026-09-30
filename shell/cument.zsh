@@ -7,7 +7,7 @@ if [[ -o interactive && -z ${CUMENT_SHELL_LOADED:-} ]]; then
         if [[ ${CUMENT_TITLE:-1} != 0 ]]; then
             local title=${PWD:t}
             title=${title//[^[:alnum:]. _-]/_}
-            printf '\033]0;%s — cument:%s\007' "$title" "$$"
+            printf '\033]0;%s — cument:%s\007\033]2;%s — cument:%s\007' "$title" "$$" "$title" "$$"
         fi
         command cument context --pid "$$" "$PWD" >/dev/null 2>&1 &!
         return "$result"

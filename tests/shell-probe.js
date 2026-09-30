@@ -12,6 +12,8 @@ const XML = `<node><interface name="io.github.ryanraposo.Cument.Test">
  <method name="Shortcut"/>
  <method name="Click"/>
  <method name="Focus"><arg type="i" direction="in"/></method>
+ <method name="Retitle"><arg type="i" direction="in" name="pid"/><arg type="s" direction="in" name="title"/></method>
+ <method name="FocusTitle"><arg type="s" direction="in" name="title"/></method>
 </interface></node>`;
 export default class Probe extends Extension {
     enable() {
@@ -29,6 +31,14 @@ export default class Probe extends Extension {
     Click() { Extension.lookupByUUID('cument@ryanraposo.github.io')._earmark.emit('clicked', 1); }
     Focus(pid) {
         const window = global.get_window_actors().map(a => a.meta_window).find(w => w.get_title().endsWith(`cument:${pid}`));
+        window.activate(global.get_current_time());
+    }
+    Retitle(pid, title) {
+        const window = global.get_window_actors().map(a => a.meta_window).find(w => w.get_title().endsWith(`cument:${pid}`));
+        window.set_title(title);
+    }
+    FocusTitle(title) {
+        const window = global.get_window_actors().map(a => a.meta_window).find(w => w.get_title() === title);
         window.activate(global.get_current_time());
     }
     Inspect() {
