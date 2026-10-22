@@ -14,3 +14,4 @@ jobs:
         with:
           name: cument-packages
           path: dist/*
+          retention-days: 7
